@@ -2,3 +2,5 @@ vendor/
 feeds.toml
 .env
 service/
+dist/*
+!dist/.keep
