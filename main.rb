@@ -2,7 +2,7 @@ require 'sinatra'
 require 'toml-rb'
 require 'rack/contrib'
 
-FEEDS_TOML_PATH = ENV.fetch('FEEDS_TOML_PATH').freeze
+FEEDS_TOML_PATH = './feeds.toml'.freeze
 
 use Rack::PostBodyContentTypeParser
 
