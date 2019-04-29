@@ -16,4 +16,5 @@ end
 
 post '/update' do
   File.write(FEEDS_TOML_PATH, TomlRB.dump(params))
+  TomlRB.parse(File.read(FEEDS_TOML_PATH)).to_json
 end

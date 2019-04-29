@@ -7,6 +7,7 @@ import Html.Attributes exposing (type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, dict, field, string)
+import Json.Encode exposing (Value, object)
 
 
 
@@ -116,7 +117,11 @@ update msg model =
         AddFeed ->
             case model of
                 Loaded (Feeds d) (DraftFeed name url) ->
-                    ( Loaded (Feeds <| Dict.insert name url d) (DraftFeed "" ""), Cmd.none )
+                    let
+                        newFeeds =
+                            Feeds <| Dict.insert name url d
+                    in
+                    ( Loaded newFeeds (DraftFeed "" ""), postFeeds newFeeds )
 
                 _ ->
                     ( model, Cmd.none )
@@ -170,3 +175,21 @@ viewFeed ( name, url ) =
         [ text (name ++ ": " ++ url)
         , button [ onClick (RemoveFeed name) ] [ text "削除" ]
         ]
+
+
+
+-- CMD
+
+
+feeds2json : Feeds -> Value
+feeds2json (Feeds d) =
+    object (d |> Dict.toList |> List.map (\( name, url ) -> ( name, object [ ( "feed_url", Json.Encode.string url ) ] )))
+
+
+postFeeds : Feeds -> Cmd Msg
+postFeeds feeds =
+    Http.post
+        { url = "/update"
+        , body = Http.jsonBody (feeds2json feeds)
+        , expect = Http.expectJson GotFeeds feedsDecoder
+        }
