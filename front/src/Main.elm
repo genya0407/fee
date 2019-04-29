@@ -2,8 +2,9 @@ module Main exposing (Model(..), Msg(..), init, main, subscriptions, update, vie
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, pre, text)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, input, pre, text)
+import Html.Attributes exposing (type_, value)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, dict, field, string)
 
@@ -27,7 +28,7 @@ main =
 
 type Model
     = Loading
-    | Loaded Feeds
+    | Loaded Feeds DraftFeed
     | Failure
 
 
@@ -41,6 +42,10 @@ type alias FeedUrl =
 
 type Feeds
     = Feeds (Dict Name FeedUrl)
+
+
+type DraftFeed
+    = DraftFeed Name FeedUrl
 
 
 init : () -> ( Model, Cmd Msg )
@@ -68,6 +73,9 @@ feedsDecoder =
 type Msg
     = GotFeeds (Result Http.Error Feeds)
     | RemoveFeed Name
+    | ChangeDraftFeedName Name
+    | ChangeDraftFeedUrl FeedUrl
+    | AddFeed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -76,15 +84,39 @@ update msg model =
         GotFeeds result ->
             case result of
                 Ok feeds ->
-                    ( Loaded feeds, Cmd.none )
+                    ( Loaded feeds (DraftFeed "" ""), Cmd.none )
 
                 Err _ ->
                     ( Failure, Cmd.none )
 
         RemoveFeed name ->
             case model of
-                Loaded (Feeds d) ->
-                    ( Loaded (Feeds (Dict.remove name d)), Cmd.none )
+                Loaded (Feeds d) draft ->
+                    ( Loaded (Feeds (Dict.remove name d)) draft, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ChangeDraftFeedName newName ->
+            case model of
+                Loaded feeds (DraftFeed oldName url) ->
+                    ( Loaded feeds (DraftFeed newName url), Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ChangeDraftFeedUrl newUrl ->
+            case model of
+                Loaded feeds (DraftFeed name oldUrl) ->
+                    ( Loaded feeds (DraftFeed name newUrl), Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        AddFeed ->
+            case model of
+                Loaded (Feeds d) (DraftFeed name url) ->
+                    ( Loaded (Feeds <| Dict.insert name url d) (DraftFeed "" ""), Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -112,8 +144,18 @@ view model =
         Loading ->
             text "Loading..."
 
-        Loaded feeds ->
-            div [] (viewFeeds feeds)
+        Loaded feeds draft ->
+            div [] (viewFeeds feeds ++ [ viewAddFeed draft ])
+
+
+viewAddFeed : DraftFeed -> Html Msg
+viewAddFeed (DraftFeed name url) =
+    div []
+        [ input [ type_ "text", value name, onInput ChangeDraftFeedName ] []
+        , text ": "
+        , input [ type_ "text", value url, onInput ChangeDraftFeedUrl ] []
+        , button [ onClick AddFeed ] [ text "追加" ]
+        ]
 
 
 viewFeeds : Feeds -> List (Html Msg)
