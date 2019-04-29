@@ -2,7 +2,8 @@ module Main exposing (Model(..), Msg(..), init, main, subscriptions, update, vie
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Html, div, pre, text)
+import Html exposing (Html, button, div, pre, text)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, dict, field, string)
 
@@ -66,6 +67,7 @@ feedsDecoder =
 
 type Msg
     = GotFeeds (Result Http.Error Feeds)
+    | RemoveFeed Name
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -78,6 +80,14 @@ update msg model =
 
                 Err _ ->
                     ( Failure, Cmd.none )
+
+        RemoveFeed name ->
+            case model of
+                Loaded (Feeds d) ->
+                    ( Loaded (Feeds (Dict.remove name d)), Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -102,5 +112,19 @@ view model =
         Loading ->
             text "Loading..."
 
-        Loaded (Feeds feeds) ->
-            div [] (Dict.toList feeds |> List.map (\( name, url ) -> text url))
+        Loaded feeds ->
+            div [] (viewFeeds feeds)
+
+
+viewFeeds : Feeds -> List (Html Msg)
+viewFeeds (Feeds feeds) =
+    Dict.toList feeds
+        |> List.map viewFeed
+
+
+viewFeed : ( Name, FeedUrl ) -> Html Msg
+viewFeed ( name, url ) =
+    div []
+        [ text (name ++ ": " ++ url)
+        , button [ onClick (RemoveFeed name) ] [ text "削除" ]
+        ]
